@@ -1,7 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import LoginForm from './components/LoginForm.vue'
+import PesananSaya from './components/PesananSaya.vue'
+import { useAuthStore } from './stores/auth.js'
+import { ref, computed, watch } from 'vue'
 import BarangCard from './components/BarangCard.vue'
+import GrafikProduk from './components/GrafikProduk.vue'
 
+const auth = useAuthStore()
 const sidebarTerbuka = ref(false)
 
 function toggleSidebar() {
@@ -126,6 +131,18 @@ async function hapusBarang(id) {
       throw new Error('Status HTTP: ' + response.status)
     }
 
+    // --- Watch: reset data saat logout ---
+    watch(
+      () => auth.isLoggedIn,
+      (nilai) => {
+        if (!nilai) {
+          barangList.value = []
+          keadaan.value = 'idle'
+          queryPencarian.value = ''
+        }
+      },
+    )
+
     // Refresh data
     await muatBarang()
   } catch (error) {
@@ -139,9 +156,12 @@ muatBarang()
 </script>
 
 <template>
-  <div class="dashboard">
-    <!-- Sidebar kiri -->
-    <aside class="sidebar" :class="{ 'sidebar-open': sidebarTerbuka }">
+  <!-- Kalau BELUM login → tampilkan LoginForm -->
+  <LoginForm v-if="!auth.isLoggedIn" />
+
+  <!-- Kalau SUDAH login → tampilkan dashboard -->
+  <div v-else class="dashboard">
+    <aside class="sidebar">
       <h2 class="sidebar-brand">Inventaris</h2>
       <nav>
         <ul>
@@ -152,15 +172,17 @@ muatBarang()
       </nav>
     </aside>
 
-    <!-- Topbar kanan atas -->
-    <!-- Topbar kanan atas -->
     <header class="topbar">
-      <button id="menu-toggle" @click="toggleSidebar" aria-label="Open menu">≡</button>
       <h1>Dashboard Inventaris</h1>
+      <button class="btn-logout" @click="auth.logout">Keluar</button>
     </header>
 
-    <!-- Content kanan bawah -->
     <main class="content">
+      <!-- Pesanan Saya -->
+      <PesananSaya />
+
+      <GrafikProduk />
+
       <!-- 4 Tile Ringkasan -->
       <section class="ringkasan">
         <div class="tile">
@@ -198,7 +220,7 @@ muatBarang()
         </div>
       </section>
 
-      <!-- Toolbar: Search & Sort -->
+      <!-- Toolbar -->
       <section class="toolbar">
         <input v-model="queryPencarian" type="text" placeholder="Cari nama atau kategori..." />
         <div class="sort-controls">
@@ -228,7 +250,7 @@ muatBarang()
 </template>
 
 <style scoped>
-/* ===== Layout Grid (seperti Dashboard Shell) ===== */
+/* ===== Layout Grid ===== */
 .dashboard {
   display: grid;
   grid-template-columns: 240px 1fr;
@@ -297,8 +319,10 @@ muatBarang()
   grid-area: content;
   padding: 1.5rem;
   background: #f3f7f8;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
-
 /* ===== Tile Ringkasan ===== */
 .ringkasan {
   display: grid;
@@ -480,5 +504,31 @@ muatBarang()
   .content {
     padding: 1rem;
   }
+}
+/* Topbar dengan tombol logout */
+.topbar {
+  grid-area: topbar;
+  background: white;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #dfe6e9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.topbar h1 {
+  font-size: 1.25rem;
+  color: #0b4f6c;
+}
+.btn-logout {
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #c0392b;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-logout:hover {
+  background: #a93226;
 }
 </style>
